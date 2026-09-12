@@ -1,0 +1,8 @@
+- hosts: lab
+  tasks:
+    - apt: { name: "{{ pkg }}", state: present, update_cache: true }
+      when: pkg is defined
+    - apt: { deb: "/opt/soft/{{ deb }}" }
+      when: deb is defined
+    - shell: "{{ cmd }}"
+      when: cmd is defined
