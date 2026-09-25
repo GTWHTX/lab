@@ -1,11 +1,11 @@
-# ~/lab/setup.yml — базовая настройка лаб-машины (Kubuntu).
-# Запуск: ansible-playbook setup.yml            # все
+# ~/lab/setup.yml -> base setup of lab machine (Kubuntu).
+# Run: ansible-playbook setup.yml            # all
 #         ansible-playbook setup.yml --limit lab-07
-# Требует: inventory.ini, hosts (IP имя), ключ на машинах, NOPASSWD для kse.
+# Requires: inventory.ini, hosts (IP name), key on machines, NOPASSWD for kse.
 
 - hosts: lab
   vars:
-    server: lab-01                # NFS/управляющий узел
+    server: lab-01                # NFS/management node
     server_ip: 10.102.1.22
     chromium_policy:
       IncognitoModeAvailability: 2
@@ -20,25 +20,25 @@
     - name: hostname = inventory name
       hostname: { name: "{{ inventory_hostname }}" }
 
-    - name: /etc/hosts — все машины
+    - name: /etc/hosts -> all machines
       blockinfile:
         path: /etc/hosts
         block: "{{ lookup('file', 'hosts') }}"
         
-    - name: sudo без пароля для kse
+    - name: sudo without password for kse
       copy:
         dest: /etc/sudoers.d/kse
         content: "kse ALL=(ALL) NOPASSWD:ALL\n"
         mode: "0440"
         validate: visudo -cf %s
 
-    - name: базовые пакеты
+    - name: basic packages
       apt:
         name: [git, curl, wget, vim, htop, tmux, nfs-common, figlet, lolcat, neofetch, openssh-server, ufw]
         state: present
         update_cache: true
 
-    - name: не ждать сеть при загрузке
+    - name: do not wait for network at boot
       systemd: { name: NetworkManager-wait-online.service, enabled: false, state: stopped }
 
     - name: sysctl
@@ -50,7 +50,7 @@
           fs.inotify.max_user_instances = 512
       notify: sysctl
 
-    - name: NFS /opt/soft (не на самом сервере)
+    - name: NFS /opt/soft (not on the server)
       when: inventory_hostname != server
       block:
         - file: { path: /opt/soft, state: directory }
@@ -61,7 +61,7 @@
             opts: ro,_netdev,nofail,x-systemd.automount,x-systemd.mount-timeout=10
             state: mounted
 
-    - name: bashrc → /opt/soft/lab.sh
+    - name: bashrc -> /opt/soft/lab.sh
       lineinfile:
         path: /etc/bash.bashrc
         line: "[ -f /opt/soft/lab.sh ] && . /opt/soft/lab.sh"
@@ -70,13 +70,13 @@
       file: { path: "{{ item }}", state: directory }
       loop: [/etc/chromium/policies/managed, /etc/chromium-browser/policies/managed]
 
-    - name: Chromium policy (инкогнито + uBO Lite)
+    - name: Chromium policy (incognito + uBO Lite)
       copy:
         dest: "{{ item }}/lab.json"
         content: "{{ chromium_policy | to_nice_json }}"
       loop: [/etc/chromium/policies/managed, /etc/chromium-browser/policies/managed]
 
-    - name: ufw — ssh
+    - name: ufw -> ssh
       ufw: { rule: allow, port: "22", proto: tcp }
     - name: ufw on
       ufw: { state: enabled, policy: deny }
